@@ -268,8 +268,9 @@ standards.
 -   Environment configuration; staging/production refuse placeholder
     secrets, example credentials and the inline job backend.
 -   SQLAlchemy 2 setup and Alembic migrations (initial migration enables
-    PostGIS and creates `users` and `audit_logs`; verified to run from an
-    empty database and match the models).
+    PostGIS and creates `users` and `audit_logs`; clean SQLite upgrade,
+    downgrade and re-upgrade verified locally. Live PostGIS validation
+    remains pending).
 -   PostgreSQL/PostGIS and Redis connections.
 -   JWT authentication foundation and role/permission-based access
     control (`app/shared/permissions.py`).
@@ -309,12 +310,12 @@ standards.
 -   ✅ Trusted-proxy handling for client IPs (`TRUSTED_PROXIES`);
     `X-Forwarded-For` is ignored unless the direct peer is a trusted
     proxy.
--   ✅ Migrations and the full test suite verified on real
-    PostgreSQL 16 + PostGIS 3.4 and real Redis, and wired into CI.
--   ⏳ Remaining: confirm the Docker image build and docker-compose stack
-    in CI (not testable in the build environment); module owners apply
-    `RateLimiter` to their endpoints; alerting on `FAILED` outbox rows
-    (Contract K).
+-   ⏳ Live validation remains pending: run the CI checks against real
+    PostgreSQL 16 + PostGIS 3.4 and Redis, and confirm the Docker image and
+    compose stack. The current environment has no Docker executable; the
+    local test suite and SQLite migration cycle pass.
+-   ⏳ Module owners apply `RateLimiter` to their endpoints; alerting on
+    `FAILED` outbox rows (Contract K).
 
 ### Acceptance criteria
 

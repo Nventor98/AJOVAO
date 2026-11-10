@@ -1,0 +1,73 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  test-and-migrate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: naijalife
+          POSTGRES_USER: naijalife
+          POSTGRES_PASSWORD: local-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U naijalife -d naijalife"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NAIJALIFE_APP_ENV: development
+      NAIJALIFE_SECRET_KEY: local-ci-secret-not-for-deployment
+      NAIJALIFE_DATABASE_URL: postgresql+psycopg://naijalife:local-ci-only@localhost:5432/naijalife
+      NAIJALIFE_REDIS_URL: redis://localhost:6379/0
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        working-directory: backend
+        run: python -m pip install -r requirements.txt
+      - name: Compile Python sources
+        working-directory: backend
+        run: python -m compileall -q app tests
+      - name: Run tests
+        working-directory: backend
+        env:
+          NAIJALIFE_DATABASE_URL: sqlite:///./naijalife-ci-test.db
+        run: python -m pytest -q
+      - name: Verify PostGIS migrations
+        working-directory: backend
+        run: python -m alembic upgrade head
+      - name: Scan dependencies
+        run: |
+          python -m pip install pip-audit
+          python -m pip_audit -r backend/requirements.txt
+      - name: Build backend image
+        run: docker build -t naijalife-ai-backend:ci backend
+      - name: Validate compose configuration
+        run: docker compose -f backend/docker-compose.yml config --quiet
