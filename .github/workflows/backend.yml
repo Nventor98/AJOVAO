@@ -71,3 +71,44 @@ jobs:
         run: docker build -t naijalife-ai-backend:ci backend
       - name: Validate compose configuration
         run: docker compose -f backend/docker-compose.yml config --quiet
+
+
+  compose-runtime-smoke:
+    name: Docker Compose Runtime Smoke Test
+    runs-on: ubuntu-latest
+    needs: test-and-migrate
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build and start Compose stack
+        working-directory: backend
+        run: docker compose up --build --detach --wait --wait-timeout 180
+
+      - name: Verify API readiness
+        working-directory: backend
+        run: |
+          curl \
+            --fail \
+            --show-error \
+            --retry 5 \
+            --retry-connrefused \
+            --retry-delay 2 \
+            --retry-max-time 30 \
+            http://127.0.0.1:8000/api/v1/ready
+
+      - name: Show running service status
+        if: success()
+        working-directory: backend
+        run: docker compose ps
+
+      - name: Collect Compose logs on failure
+        if: failure()
+        working-directory: backend
+        run: docker compose logs --no-color --tail=200 || true
+
+      - name: Stop Compose stack and remove volumes
+        if: always()
+        working-directory: backend
+        run: docker compose down --volumes --remove-orphans || true
