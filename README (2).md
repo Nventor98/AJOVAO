@@ -267,10 +267,11 @@ standards.
 -   FastAPI project structure and module folders.
 -   Environment configuration; staging/production refuse placeholder
     secrets, example credentials and the inline job backend.
--   SQLAlchemy 2 setup and Alembic migrations (initial migration enables
-    PostGIS and creates `users` and `audit_logs`; clean SQLite upgrade,
-    downgrade and re-upgrade verified locally. Live PostGIS validation
-    remains pending).
+-   SQLAlchemy 2 setup and Alembic migrations (initial migration
+    creates `users`, `audit_logs` and `outbox_events`; subsequent
+    migrations enable PostGIS and add spatial columns and indexes.
+    Clean SQLite upgrade, downgrade and re-upgrade verified locally.
+    Live PostgreSQL/PostGIS validation remains pending).
 -   PostgreSQL/PostGIS and Redis connections.
 -   JWT authentication foundation and role/permission-based access
     control (`app/shared/permissions.py`).
