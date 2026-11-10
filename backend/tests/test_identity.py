@@ -4,6 +4,7 @@ import base64
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
+import jwt
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -483,3 +484,37 @@ def test_agent_can_enable_farmer_role_only_with_scoped_active_consent(client, db
         stored_member = db.get(User, member.id)
         assert stored_member is not None
         assert "farmer" in stored_member.roles
+
+def test_malformed_access_token_is_rejected(client) -> None:
+    response = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": "Bearer not-a-valid-token"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_expired_access_token_is_rejected(client, db_engine) -> None:
+    from app.core.config import settings
+
+    user = create_user(db_engine)
+    expired_token = jwt.encode(
+        {
+            "sub": user.id,
+            "roles": user.roles,
+            "permissions": user.permissions,
+            "iat": datetime.now(timezone.utc) - timedelta(hours=2),
+            "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+        },
+        settings.secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+
+    response = client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {expired_token}"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"

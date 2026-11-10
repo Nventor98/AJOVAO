@@ -7,12 +7,14 @@ import ipaddress
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEVELOPMENT_SECRET_KEY = "naijalife-development-only-key-not-for-production"
+
 
 class Settings(BaseSettings):
     app_name: str = Field(default="NaijaLife AI")
     app_env: str = Field(default="development")
     debug: bool = Field(default=False)
-    secret_key: str = Field(default="change-me-in-production")
+    secret_key: str = Field(default=DEVELOPMENT_SECRET_KEY)
     jwt_algorithm: str = Field(default="HS256")
     access_token_ttl_minutes: int = Field(default=60)
     phone_verification_ttl_minutes: int = Field(default=10)
@@ -57,8 +59,20 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def reject_placeholder_production_secret(self) -> "Settings":
         if self.app_env.lower() in {"stage", "staging", "prod", "production"}:
-            if self.secret_key in {"", "change-me-in-production", "secret", "changeme"} or len(self.secret_key) < 32:
-                raise ValueError("NAIJALIFE_SECRET_KEY must be at least 32 characters outside development.")
+            if (
+                self.secret_key == DEVELOPMENT_SECRET_KEY
+                or self.secret_key in {
+                    "",
+                    "change-me-in-production",
+                    "secret",
+                    "changeme",
+                }
+                or len(self.secret_key.encode("utf-8")) < 32
+            ):
+                raise ValueError(
+                    "NAIJALIFE_SECRET_KEY must be a unique secret "
+                    "of at least 32 bytes outside development."
+                )
         return self
 
 

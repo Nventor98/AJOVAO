@@ -12,7 +12,8 @@ from urllib.parse import urlencode, quote
 from urllib.request import Request, urlopen
 
 from fastapi import HTTPException, status
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -120,11 +121,15 @@ def create_access_token(user: User) -> str:
 
 def resolve_access_token(db: Session, token: str) -> User:
     try:
-        claims = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        claims = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
         user_id = claims.get("sub")
         if not isinstance(user_id, str):
-            raise JWTError("Token subject is invalid")
-    except JWTError as exc:
+            raise InvalidTokenError("Token subject is invalid")
+    except InvalidTokenError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired access token.",
