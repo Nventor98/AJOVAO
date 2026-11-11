@@ -33,6 +33,39 @@ Add categories, units, and products (including grades) using staff/admin endpoin
 
 From `backend`, run `docker compose up --build` to start the API, PostGIS, and Redis. The API container runs database migrations before starting and binds only to localhost. Compose credentials are for local development only; replace them before any shared or deployed use. The outbox worker is intentionally not started by default because event handlers must be registered before processing pending events.
 
+## Background jobs
+
+The background-job interface is available through `app.shared.jobs`:
+
+- `@job` registers a function as a background job.
+- `enqueue(task, *args, **kwargs)` executes the job inline or submits it to Celery, depending on `NAIJALIFE_JOB_BACKEND`.
+
+The default backend is `inline`, which is suitable for local development and tests. Staging and production require `NAIJALIFE_JOB_BACKEND=celery`.
+
+### Running the Celery worker
+
+The Celery worker is optional and is not started by the normal Docker Compose command.
+
+To use Celery locally, set the backend environment variable in PowerShell:
+
+```powershell
+$env:NAIJALIFE_JOB_BACKEND = "celery"
+docker compose --profile celery up --build
+```
+
+This starts the API and the optional Celery worker. Both use the configured Redis service as their broker.
+
+To return to inline execution in the current PowerShell session:
+
+```powershell
+Remove-Item Env:NAIJALIFE_JOB_BACKEND
+```
+The Celery worker loads the `app.tasks` package on startup. Each application job module must be imported by `app/tasks/__init__.py` so its tasks are registered before they are executed. The current foundation provides the job interface and worker configuration; application-specific job declarations will be added when those jobs are introduced.
+
+### Celery and the transactional outbox
+
+Celery job execution and transactional outbox processing are separate mechanisms. The Celery worker does not replace the outbox dispatcher or its retry and failed-event handling. The outbox worker remains intentionally separate and is not started automatically by Docker Compose because event handlers must be registered before pending events are processed.
+
 ## Core conventions
 
 - JSON response envelope: `success`, `data`, `meta`

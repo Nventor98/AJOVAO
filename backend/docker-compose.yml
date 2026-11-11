@@ -34,6 +34,7 @@ services:
       NAIJALIFE_SECRET_KEY: local-development-secret-change-before-deployment
       NAIJALIFE_DATABASE_URL: postgresql+psycopg://naijalife:local-dev-only@db:5432/naijalife
       NAIJALIFE_REDIS_URL: redis://redis:6379/0
+      NAIJALIFE_JOB_BACKEND: ${NAIJALIFE_JOB_BACKEND:-inline}
       NAIJALIFE_TRUSTED_PROXIES: '["127.0.0.1","::1"]'
     ports:
       - "127.0.0.1:8000:8000"
@@ -52,6 +53,30 @@ services:
       timeout: 3s
       retries: 10
       start_period: 30s
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command:
+      - celery
+      - -A
+      - app.shared.celery_app:celery_app
+      - worker
+      - --loglevel=INFO
+    profiles:
+      - celery
+    environment:
+      NAIJALIFE_APP_ENV: development
+      NAIJALIFE_SECRET_KEY: local-development-secret-change-before-deployment
+      NAIJALIFE_DATABASE_URL: postgresql+psycopg://naijalife:local-dev-only@db:5432/naijalife
+      NAIJALIFE_REDIS_URL: redis://redis:6379/0
+      NAIJALIFE_JOB_BACKEND: celery
+      NAIJALIFE_TRUSTED_PROXIES: '["127.0.0.1","::1"]'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

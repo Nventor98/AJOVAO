@@ -3,7 +3,8 @@ uvicorn[standard]==0.54.0
 SQLAlchemy==2.1.8
 alembic==1.20.1
 psycopg[binary]==3.3.8
-redis==5.3.1
+redis==6.4.0
+celery[redis]==5.7.0
 pydantic==2.14.3
 pydantic-settings==2.16.2
 pytest==9.0.3

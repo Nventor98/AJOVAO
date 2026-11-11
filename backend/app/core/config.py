@@ -34,6 +34,7 @@ class Settings(BaseSettings):
 
     database_url: str = Field(default="sqlite:///./naijalife.db")
     redis_url: str = Field(default="redis://localhost:6379/0")
+    job_backend: str = Field(default="inline")
     trusted_proxies: list[str] = Field(default_factory=lambda: ["127.0.0.1", "::1"])
 
     max_page_size: int = Field(default=100)
@@ -73,6 +74,17 @@ class Settings(BaseSettings):
                     "NAIJALIFE_SECRET_KEY must be a unique secret "
                     "of at least 32 bytes outside development."
                 )
+        if self.app_env.lower() in {"stage", "staging", "prod", "production"}:
+            if self.job_backend.lower() != "celery":
+                raise ValueError(
+                    "NAIJALIFE_JOB_BACKEND must be 'celery' "
+                    "outside development."
+                )
+
+        if self.job_backend.lower() not in {"inline", "celery"}:
+            raise ValueError(
+                "NAIJALIFE_JOB_BACKEND must be either 'inline' or 'celery'."
+            )
         return self
 
 

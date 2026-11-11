@@ -37,3 +37,55 @@ def test_short_secret_is_rejected_in_production() -> None:
             app_env="production",
             secret_key="short-secret",
         )
+
+def test_inline_job_backend_is_allowed_in_development() -> None:
+    settings = Settings(
+        _env_file=None,
+        app_env="development",
+        job_backend="inline",
+    )
+    assert settings.job_backend == "inline"
+
+
+def test_celery_job_backend_is_allowed_in_development() -> None:
+    settings = Settings(
+        _env_file=None,
+        app_env="development",
+        job_backend="celery",
+    )
+    assert settings.job_backend == "celery"
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_inline_job_backend_is_rejected_outside_development(
+    environment: str,
+) -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            app_env=environment,
+            secret_key="a-valid-test-secret-key-with-more-than-32-bytes",
+            job_backend="inline",
+        )
+
+
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_celery_job_backend_is_required_outside_development(
+    environment: str,
+) -> None:
+    settings = Settings(
+        _env_file=None,
+        app_env=environment,
+        secret_key="a-valid-test-secret-key-with-more-than-32-bytes",
+        job_backend="celery",
+    )
+    assert settings.job_backend == "celery"
+
+
+def test_invalid_job_backend_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            app_env="development",
+            job_backend="unknown",
+        )
